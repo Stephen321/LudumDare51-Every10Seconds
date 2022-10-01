@@ -25,7 +25,7 @@ const size_t SCREEN_HEIGHT = 480;
 // player 
 const size_t PLAYER_START_COL = 6;
 const size_t PLAYER_START_ROW = 4;
-const size_t PLAYER_START_LIVES = 5;
+const size_t PLAYER_START_LIVES = 3;
 
 // goal
 const size_t GOAL_START_COL = MAZE_COLS - 6;
