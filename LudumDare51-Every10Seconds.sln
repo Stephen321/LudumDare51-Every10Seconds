@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LudumDare51-Every10Seconds", "LudumDare51-Every10Seconds\LudumDare51-Every10Seconds.vcxproj", "{4199FE6C-0678-4749-85E1-AF5DF2C53C0E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4199FE6C-0678-4749-85E1-AF5DF2C53C0E}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{4199FE6C-0678-4749-85E1-AF5DF2C53C0E}.Debug|Any CPU.Build.0 = Debug|x64
+		{4199FE6C-0678-4749-85E1-AF5DF2C53C0E}.Release|Any CPU.ActiveCfg = Release|x64
+		{4199FE6C-0678-4749-85E1-AF5DF2C53C0E}.Release|Any CPU.Build.0 = Release|x64
+	EndGlobalSection
+EndGlobal
