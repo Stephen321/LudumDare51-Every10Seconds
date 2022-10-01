@@ -156,6 +156,7 @@ int main()
     float playerMoveTimer = 0;
     size_t playerLives = PLAYER_START_LIVES;
     Vector2 playerPosition;
+    float playerDirection = 1.f;
     resetPlayer(playerPosition, blockers);
     
     Texture2D playerTexture = LoadTexture("resources/player.png");
@@ -183,10 +184,12 @@ int main()
         if (IsKeyDown(KEY_RIGHT))
         {
             movement.x = MAZE_TILE_SIZE;
+            playerDirection = 1.f;
         }
         if (IsKeyDown(KEY_LEFT))
         {
             movement.x -= MAZE_TILE_SIZE;
+            playerDirection = -1.f;
         }
         if (IsKeyDown(KEY_UP))
         {
@@ -221,8 +224,6 @@ int main()
 
                 int targetRow = playerPosition.y / MAZE_TILE_SIZE;
                 int targetCol = playerPosition.x / MAZE_TILE_SIZE; 
-
-
                 
                 // wrap around 
                 bool wrappedArouind = false;
@@ -235,7 +236,7 @@ int main()
                 else if (targetCol > MAZE_COLS - 1)
                 {
                     targetCol = 0;
-                    playerPosition.x = -movement.x;
+                    playerPosition.x = 0;
                     wrappedArouind = true;
                 }
                 if (targetRow < 0)
@@ -247,7 +248,7 @@ int main()
                 else if (targetRow > MAZE_ROWS - 1)
                 {
                     targetRow = 0;
-                    playerPosition.y = -movement.y;
+                    playerPosition.y = 0;
                     wrappedArouind = true;
                 }
 
@@ -339,7 +340,7 @@ int main()
         
             // draw player
             // DrawCircleV(playerPosition, MAZE_TILE_SIZE / 2.f, MAROON);
-            DrawTextureV(playerTexture, playerPosition, WHITE);
+            DrawTextureRec(playerTexture, {0, 0, playerDirection * MAZE_TILE_SIZE, MAZE_TILE_SIZE}, playerPosition, WHITE);
         
             // draw game
             DrawText(TextFormat("Lives: %d", playerLives), (1 * MAZE_TILE_SIZE) + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
