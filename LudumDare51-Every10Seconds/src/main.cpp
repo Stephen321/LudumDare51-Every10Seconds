@@ -1,13 +1,26 @@
 
+// todo get rid of this
+#include <vector>
+
 #include "raylib.h"
 
+#include "Maze.h"
+
+struct RowCol
+{
+    size_t row;
+    size_t col;
+};
+
+struct MazeWall
+{
+    Vector2 position;
+    Texture2D* texture;
+};
+
 // init
-const size_t TILE_SIZE = 720 / 30; // 24
 const size_t SCREEN_WIDTH = 720;
 const size_t SCREEN_HEIGHT = 480;
-const size_t ROWS = SCREEN_HEIGHT / TILE_SIZE; // 30
-const size_t COLS = SCREEN_WIDTH / TILE_SIZE; // 20
-const bool USE_SHAPES = false;
 
 // player 
 const size_t PLAYER_START_COL = 6;
@@ -15,38 +28,100 @@ const size_t PLAYER_START_ROW = 4;
 const size_t PLAYER_START_LIVES = 5;
 
 // goal
-const size_t GOAL_START_COL = COLS - 6;
-const size_t GOAL_START_ROW = ROWS - 4;
+const size_t GOAL_START_COL = MAZE_COLS - 6;
+const size_t GOAL_START_ROW = MAZE_ROWS - 4;
 
 // game
 const float MAZE_SECONDS = 10;
 
-Vector2 getPosition(size_t row, size_t col)
+Vector2 getPosition(RowCol rowCol)
 {
     Vector2 position;
-    position.x = (float)(col * TILE_SIZE);
-    position.y = (float)(row * TILE_SIZE);
+    position.x = (float)(rowCol.col * MAZE_TILE_SIZE);
+    position.y = (float)(rowCol.row * MAZE_TILE_SIZE);
     return position;
 }
 
-void resetPlayer(Vector2& playerPosition)
+RowCol getRandomRowCol()
 {
-    size_t row = GetRandomValue(0, ROWS - 1);
-    size_t col = GetRandomValue(0, COLS - 1);
-    playerPosition = getPosition(row, col);
+    return { (size_t)GetRandomValue(0, MAZE_ROWS - 1), (size_t)GetRandomValue(0, MAZE_COLS - 1)};
 }
 
-void resetGoal(size_t& goalRow, size_t& goalCol, Vector2& goalPosition)
+bool checkIfBlocked(RowCol target, const std::vector<RowCol>& blockers)
+{
+    for (size_t i = 0; i < blockers.size(); i++)
+    {
+        if (blockers[i].row == target.row &&
+            blockers[i].col == target.col)
+        {
+           return true;
+        }
+    }
+    return false;
+}
+
+void resetPlayer(Vector2& playerPosition, std::vector<RowCol>& blockers)
+{
+    RowCol targetRowCol{};
+    do
+    {
+       targetRowCol = getRandomRowCol(); 
+    } while (checkIfBlocked(targetRowCol, blockers));
+    playerPosition = getPosition(targetRowCol);
+}
+
+void resetGoal(RowCol& goalRowCol, Vector2& goalPosition, std::vector<RowCol>& blockers)
 {
     // todo make sure to now overlap player
-    goalRow = GetRandomValue(0, ROWS - 1);
-    goalCol = GetRandomValue(0, COLS - 1);
-    goalPosition = getPosition(goalRow, goalCol);
+    RowCol targetRowCol{};
+    do
+    {
+       targetRowCol = getRandomRowCol(); 
+    } while (checkIfBlocked(targetRowCol, blockers));
+    goalRowCol = targetRowCol;
+    goalPosition = getPosition(targetRowCol);
+    blockers.push_back(goalRowCol);
 }
 
 void resetGame(float& mazeTimer)
 {
     mazeTimer = MAZE_SECONDS;
+}
+
+
+void resetMaze(size_t& currentMazeIndex, std::vector<MazeWall>& mazeWalls, std::vector<RowCol>& blockers, Texture2D* mazeWallTextures)
+{
+    mazeWalls.clear();
+    blockers.clear();
+
+    size_t mazeIndex;
+    do
+    {
+        mazeIndex = (size_t)GetRandomValue(0, MAZE_LAYOUTS_SIZE - 1);
+    } while (mazeIndex == currentMazeIndex);
+    currentMazeIndex = mazeIndex;
+    
+    const char** currentMaze = MAZE_LAYOUTS[mazeIndex];
+    for (size_t row = 0; row < MAZE_ROWS; row++)
+    {
+        const char* mazeRow = currentMaze[row];
+        for (size_t col = 0; col < MAZE_COLS; col++)
+        {
+           char type = mazeRow[col];
+            if (type == MAZE_EMPTY)
+            {
+                
+            }
+            else if (type == MAZE_WALL)
+            {
+                MazeWall newWall;
+                newWall.position = getPosition({row, col});
+                newWall.texture = &mazeWallTextures[(size_t)GetRandomValue(0, MAZE_WALL_TEXTURES - 1)];
+                mazeWalls.push_back(newWall);
+                blockers.push_back({row, col});
+            }
+        }
+    }
 }
 
 int main()
@@ -56,28 +131,39 @@ int main()
     SetTargetFPS(60);
 
     InitAudioDevice();
+    
+    // maze
+    std::vector<MazeWall> mazeWalls;
+    Texture2D mazeWallTextures[MAZE_WALL_TEXTURES];
+    mazeWallTextures[0] = LoadTexture("resources/mazeWall0.png");
+    mazeWallTextures[1] = LoadTexture("resources/mazeWall1.png");
+    std::vector<RowCol> blockers;
+    size_t currentMazeIndex = (size_t)GetRandomValue(0, MAZE_LAYOUTS_SIZE - 1);
+    resetMaze(currentMazeIndex, mazeWalls, blockers, mazeWallTextures);
+    
+    // goal
+    // todo replace with resetGoal
+    RowCol goalRowCol;
+    Vector2 goalPosition;
+    resetGoal(goalRowCol, goalPosition, blockers);
+    Texture2D goalTexture = LoadTexture("resources/goal.png");
+    Sound goalSound = LoadSound("resources/goal.wav");
+    
 
     // player
     bool playerMoving = false;
     float playerTilesPerSecond = 8;
     float playerMoveTimer = 0;
     size_t playerLives = PLAYER_START_LIVES;
-    // todo replace with resetPlayer
-    Vector2 playerPosition = getPosition(PLAYER_START_COL, PLAYER_START_ROW);
+    Vector2 playerPosition;
+    resetPlayer(playerPosition, blockers);
+    
     Texture2D playerTexture = LoadTexture("resources/player.png");
     Sound playerLifeLostSound = LoadSound("resources/playerLiveLost.wav"); 
     Sound playerFootStepsSound = LoadSound("resources/playerFootSteps.wav"); 
     Sound playerObstacleSound = LoadSound("resources/playerObstacle.wav"); 
     SetSoundVolume(playerObstacleSound, 0.3f);
     SetSoundVolume(playerFootStepsSound, 0.5f);
-    
-    // goal
-    // todo replace with resetGoal
-    size_t goalCol = GOAL_START_COL;
-    size_t goalRow = GOAL_START_ROW;
-    Vector2 goalPosition = getPosition(goalRow, goalCol);
-    Texture2D goalTexture = LoadTexture("resources/goal.png");
-    Sound goalSound = LoadSound("resources/goal.wav"); 
     
     // game
     float mazeTimer = MAZE_SECONDS;
@@ -96,19 +182,19 @@ int main()
         playerMoving = false;
         if (IsKeyDown(KEY_RIGHT))
         {
-            movement.x = TILE_SIZE;
+            movement.x = MAZE_TILE_SIZE;
         }
         if (IsKeyDown(KEY_LEFT))
         {
-            movement.x -= TILE_SIZE;
+            movement.x -= MAZE_TILE_SIZE;
         }
         if (IsKeyDown(KEY_UP))
         {
-            movement.y -= TILE_SIZE;
+            movement.y -= MAZE_TILE_SIZE;
         }
         if (IsKeyDown(KEY_DOWN))
         {
-            movement.y = TILE_SIZE;
+            movement.y = MAZE_TILE_SIZE;
         }
         if (movement.x != 0 || movement.y != 0)
         {
@@ -127,24 +213,51 @@ int main()
             {
                 playerMoveTimer = 0;
 
+                Vector2 lastPosition = playerPosition;
+                
                 // move player
                 playerPosition.x += movement.x;
                 playerPosition.y += movement.y;
 
-                int playerCol = playerPosition.x / TILE_SIZE; 
-                int playerRow = playerPosition.y / TILE_SIZE; 
+                int targetRow = playerPosition.y / MAZE_TILE_SIZE;
+                int targetCol = playerPosition.x / MAZE_TILE_SIZE; 
 
 
-                // check if in screen bounds
-                bool playFootsteps = true;
-                if (playerCol < 0 || playerCol > COLS - 1)
+                
+                // wrap around 
+                bool wrappedArouind = false;
+                if (targetCol < 0)
                 {
-                    playerPosition.x -= movement.x;
-                    playFootsteps = false;
+                    targetCol = MAZE_COLS - 1;
+                    playerPosition.x = SCREEN_WIDTH + movement.x;
+                    wrappedArouind = true;
                 }
-                if (playerRow < 0 || playerRow > ROWS - 1)
+                else if (targetCol > MAZE_COLS - 1)
                 {
-                    playerPosition.y -= movement.y;
+                    targetCol = 0;
+                    playerPosition.x = -movement.x;
+                    wrappedArouind = true;
+                }
+                if (targetRow < 0)
+                {
+                    targetRow = MAZE_ROWS - 1;
+                    playerPosition.y = SCREEN_HEIGHT + movement.y;
+                    wrappedArouind = true;
+                }
+                else if (targetRow > MAZE_ROWS - 1)
+                {
+                    targetRow = 0;
+                    playerPosition.y = -movement.y;
+                    wrappedArouind = true;
+                }
+
+                // check if blocker
+                bool playFootsteps = true;
+                if (checkIfBlocked({(size_t)targetRow, (size_t)targetCol}, blockers))
+                {
+                    // revert position
+                    playerPosition.x = lastPosition.x;
+                    playerPosition.y = lastPosition.y;
                     playFootsteps = false;
                 }
 
@@ -158,15 +271,16 @@ int main()
                 }
 
                 // check if reached goal
-                if (playerCol == goalCol &&
-                    playerRow == goalRow)
+                if (targetCol == goalRowCol.col &&
+                    targetRow == goalRowCol.row)
                 {
                     // win
                     playerLives++;
                     
                     // todo increase obstacles/difficulty
-                    resetPlayer(playerPosition);
-                    resetGoal(goalRow, goalCol, goalPosition);
+                    resetMaze(currentMazeIndex, mazeWalls, blockers, mazeWallTextures);
+                    resetGoal(goalRowCol, goalPosition, blockers);
+                    resetPlayer(playerPosition, blockers);
                     resetGame(mazeTimer);
                     PlaySound(goalSound);
                 }
@@ -178,8 +292,9 @@ int main()
         {
             // lose live, next maze
             playerLives--;
-            resetPlayer(playerPosition);
-            resetGoal(goalRow, goalCol, goalPosition);
+            resetMaze(currentMazeIndex, mazeWalls, blockers, mazeWallTextures);
+            resetGoal(goalRowCol, goalPosition, blockers);
+            resetPlayer(playerPosition, blockers);
             resetGame(mazeTimer);
             
             // lost game
@@ -202,43 +317,41 @@ int main()
             ClearBackground(DARKGRAY);
 
             // draw grid
-            for (int col = 0; col < COLS; col++)
+            for (int col = 0; col < MAZE_COLS; col++)
             {
-                DrawLine(col * TILE_SIZE, 0, col * TILE_SIZE, SCREEN_HEIGHT, GRAY);
+                DrawLine(col * MAZE_TILE_SIZE, 0, col * MAZE_TILE_SIZE, SCREEN_HEIGHT, GRAY);
             }
-            for (int row = 0; row < ROWS; row++)
+            for (int row = 0; row < MAZE_ROWS; row++)
             {
-                DrawLine(0, row * TILE_SIZE, SCREEN_WIDTH, row * TILE_SIZE, GRAY);
+                DrawLine(0, row * MAZE_TILE_SIZE, SCREEN_WIDTH, row * MAZE_TILE_SIZE, GRAY);
             }
 
-            // draw goal
-            if (USE_SHAPES)
+            // draw maze
+            for (int i = 0; i < mazeWalls.size(); i++)
             {
-                DrawCircleV(goalPosition, TILE_SIZE / 2.f, GREEN);
-            }
-            else
-            {
-                DrawTextureV(goalTexture, goalPosition, WHITE);
+                DrawTextureV(*mazeWalls[i].texture, mazeWalls[i].position, WHITE);
             }
         
+
+            // draw goal
+            // DrawCircleV(goalPosition, MAZE_TILE_SIZE / 2.f, GREEN);
+            DrawTextureV(goalTexture, goalPosition, WHITE);
+        
             // draw player
-            if (USE_SHAPES)
-            {
-                DrawCircleV(playerPosition, TILE_SIZE / 2.f, MAROON);
-            }
-            else
-            {
-                DrawTextureV(playerTexture, playerPosition, WHITE);
-            }
+            // DrawCircleV(playerPosition, MAZE_TILE_SIZE / 2.f, MAROON);
+            DrawTextureV(playerTexture, playerPosition, WHITE);
+        
             // draw game
-            DrawText(TextFormat("Lives: %d", playerLives), (1 * TILE_SIZE) + (TILE_SIZE / 4), 3, 15, LIGHTGRAY);
-            DrawText("Reach the end of the maze!", 11 * TILE_SIZE + (TILE_SIZE / 4), 3, 15, LIGHTGRAY);
-            DrawText(TextFormat("Time left: %.2f", mazeTimer), SCREEN_WIDTH - (5 * TILE_SIZE) + (TILE_SIZE / 4), 3, 15, LIGHTGRAY);
+            DrawText(TextFormat("Lives: %d", playerLives), (1 * MAZE_TILE_SIZE) + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
+            DrawText("Reach the end of the maze!", 11 * MAZE_TILE_SIZE + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
+            DrawText(TextFormat("Time left: %.2f", mazeTimer), SCREEN_WIDTH - (5 * MAZE_TILE_SIZE) + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
         
         EndDrawing();
     }
     // De-Initialization
     //--------------------------------------------------------------------------------------
+    UnloadTexture(mazeWallTextures[0]);
+    UnloadTexture(mazeWallTextures[1]);
     UnloadTexture(playerTexture);
     UnloadTexture(goalTexture);
 
