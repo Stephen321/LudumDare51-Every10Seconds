@@ -344,7 +344,7 @@ int main()
         
             // draw game
             DrawText(TextFormat("Lives: %d", playerLives), (1 * MAZE_TILE_SIZE) + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
-            DrawText("Reach the end of the maze!", 11 * MAZE_TILE_SIZE + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
+            DrawText("Get to the goal before the timer runs out!", 8 * MAZE_TILE_SIZE + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
             DrawText(TextFormat("Time left: %.2f", mazeTimer), SCREEN_WIDTH - (5 * MAZE_TILE_SIZE) + (MAZE_TILE_SIZE / 4), 3, 15, LIGHTGRAY);
         
         EndDrawing();
